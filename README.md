@@ -61,7 +61,7 @@ mvn spring-boot:run -f producer-api/pom.xml
 mvn spring-boot:run -f consumer-worker/pom.xml
 ```
 
-## 3. How to Test
+### 3. How to Test
 
 Get a URL from https://webhook.site
 
