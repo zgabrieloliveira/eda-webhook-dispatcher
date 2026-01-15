@@ -2,6 +2,10 @@ package dev.gabriel.producer_api.controller;
 
 import dev.gabriel.producer_api.model.WebhookEvent;
 import dev.gabriel.producer_api.service.WebhookProducerService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -20,6 +24,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/webhooks")
 @RequiredArgsConstructor
+@Tag(name = "Webhook Dispatcher", description = "Endpoints for ingesting and processing webhook events")
 public class WebhookController {
 
     private final WebhookProducerService producerService;
@@ -34,6 +39,15 @@ public class WebhookController {
      * @param event The webhook payload (validated via @Valid).
      * @return Confirmation with the Event ID.
      */
+    @Operation(
+            summary = "Dispatch a new webhook event",
+            description = "Receives the webhook payload, validates the data, and queues it in Kafka for asynchronous delivery."
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "202", description = "Event accepted and queued successfully"),
+            @ApiResponse(responseCode = "400", description = "Invalid payload provided (e.g., missing target URL or client ID)"),
+            @ApiResponse(responseCode = "500", description = "Internal server error (e.g., Kafka broker unavailable)")
+    })
     @PostMapping
     public ResponseEntity<String> createWebhook(@RequestBody @Valid WebhookEvent event) {
         producerService.sendWebhook(event);
