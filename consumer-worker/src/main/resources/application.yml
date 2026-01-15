@@ -1,0 +1,46 @@
+server:
+  port: 8082
+
+spring:
+  application:
+    name: consumer-worker
+
+  kafka:
+    bootstrap-servers: localhost:9092
+    consumer:
+      # groupId defines which consumers "compete" for messages.
+      # ex: if there are 3 running-instances of this app, they will automatically balance the workload among themselves
+      group-id: webhook-dispatcher-group
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      # if deserialization fails, ErrorHandlingDeserializer will handle the error
+      value-deserializer: org.springframework.kafka.support.serializer.ErrorHandlingDeserializer
+      properties:
+        spring.json.trusted.packages: "*" # trust any JSON
+        # translate the incoming JSON to this class
+        spring.json.type.mapping: dev.gabriel.producer_api.model.WebhookEvent:dev.gabriel.consumer_worker.model.WebhookEvent
+        # delegate the actual deserialization to JsonDeserializer
+        spring.deserializer.value.delegate.class: org.springframework.kafka.support.serializer.JsonDeserializer
+
+  resilience4j:
+    circuitbreaker:
+      instances:
+        webhookDelivery:
+          registerHealthIndicator: true
+          slidingWindowSize: 10 # considers the last 10 calls
+          minimumNumberOfCalls: 5 # needs at least 5 calls to evaluate
+          permittedNumberOfCallsInHalfOpenState: 3 # in Half-Open, allow 3 calls to test if the service is back
+          automaticTransitionFromOpenToHalfOpenEnabled: true
+          waitDurationInOpenState: 10s # after 10s in Open, go to Half-Open
+          failureRateThreshold: 50 # if 50% of calls fail, open the circuit
+          eventConsumerBufferSize: 10
+
+  datasource:
+    url: jdbc:postgresql://localhost:5432/webhook_db
+    username: user
+    password: password
+
+  jpa:
+    hibernate:
+      ddl-auto: update # log table auto-create
+    show-sql: true

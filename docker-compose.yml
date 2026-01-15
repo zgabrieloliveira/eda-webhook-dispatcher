@@ -1,5 +1,5 @@
 services:
-  # Kafka Broker (Modo KRaft)
+  # kafka broker (kraft mode)
   kafka:
     image: apache/kafka:latest
     container_name: kafka-lab
@@ -8,10 +8,28 @@ services:
     environment:
       KAFKA_NODE_ID: 1
       KAFKA_PROCESS_ROLES: broker,controller
-      KAFKA_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092
-      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@localhost:9093
+      
+      # listeners configuration:
+      # 1. controller (9093): internal cluster management
+      # 2. internal (29092): communication between containers (kafka ui)
+      # 3. external (9092): external access (host machine/apps)
+      KAFKA_LISTENERS: CONTROLLER://0.0.0.0:9093,INTERNAL://0.0.0.0:29092,EXTERNAL://0.0.0.0:9092
+      
+      # advertised listeners (what clients see):
+      # internal: kafka-lab:29092 (for docker network)
+      # external: localhost:9092 (for your local java apps)
+      KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka-lab:29092,EXTERNAL://localhost:9092
+      
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka-lab:9093
       KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
+
+      # critical fix for single-node cluster:
+      # prevents "offsets topic not found" loop by setting replication to 1
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
 
   # Interface Visual para o Kafka
   kafka-ui:
